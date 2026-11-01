@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SPECULA 3D // Concave Mirror Optics Simulator</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dark: '#121212',
+            card: 'rgba(22, 22, 28, 0.75)',
+            neonCyan: '#00f5d4',
+            neonPink: '#ff007f',
+            neonPurple: '#7928ca',
+            neonGreen: '#39ff14',
+            neonYellow: '#fcee0a'
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Three.js & OrbitControls CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="bg-[#121212] text-slate-100 font-sans h-screen w-screen overflow-hidden select-none relative">
+
+  <!-- Ambient background glow and grid -->
+  <div class="bg-ambient"></div>
+
+  <!-- 3D Canvas Viewport Container (dynamic 100vw x 100vh) -->
+  <div id="canvas-container" class="absolute inset-0 z-0 w-full h-full touch-none"></div>
+
+  <!-- ======================================================== -->
+  <!-- TOP FLOATING HEADER / NAVBAR                             -->
+  <!-- ======================================================== -->
+  <header class="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-20 flex items-center justify-between pointer-events-none gap-2">
+    <!-- Brand / Title -->
+    <div class="glass-panel px-3 sm:px-4 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3 pointer-events-auto shadow-2xl">
+      <div
+        class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_15px_rgba(0,245,212,0.5)] shrink-0">
+        <span class="text-white text-sm sm:text-base font-black">⚡</span>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <h1 class="font-bold text-xs sm:text-sm tracking-wide text-white uppercase flex items-center gap-1">
+            Specula <span class="hologram-text font-black">3D</span>
+          </h1>
+          <span
+            class="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+            CONCAVE LAB
+          </span>
+        </div>
+        <p class="text-[10px] sm:text-[11px] text-neutral-400 font-mono hidden sm:block">Ray Tracer & Virtual Eye POV</p>
+      </div>
+    </div>
+
+    <!-- Center: Camera View Presets -->
+    <div class="glass-panel px-2 py-1.5 hidden lg:flex items-center gap-1 pointer-events-auto shadow-2xl">
+      <span class="text-[11px] font-mono text-neutral-400 px-2">VIEWS:</span>
+      <button data-view="perspective"
+        class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-neutral-300 hover:text-cyan-300 hover:bg-white/5 transition-all">
+        Orbit 3D
+      </button>
+      <button data-view="side"
+        class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-neutral-300 hover:text-cyan-300 hover:bg-white/5 transition-all">
+        Side 2D
+      </button>
+      <button data-view="top"
+        class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-neutral-300 hover:text-cyan-300 hover:bg-white/5 transition-all">
+        Top Down
+      </button>
+      <button data-view="closeup"
+        class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-neutral-300 hover:text-cyan-300 hover:bg-white/5 transition-all">
+        Mirror Focus
+      </button>
+    </div>
+
+    <!-- Right Controls: X-Ray Mode, Theory, Audio, Screenshot, Reset -->
+    <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+      <!-- 'X-Ray Mode 🩻' Toggle Button -->
+      <button id="btn-xray-toggle"
+        class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl glass-panel text-xs font-mono font-bold text-neutral-500 border border-white/5 transition-all flex items-center gap-1.5 opacity-60 cursor-not-allowed group relative"
+        title="Discover Virtual Image (do < f) to Unlock X-Ray Mode">
+        <span id="xray-icon" class="text-sm">🔒</span>
+        <span class="hidden md:inline">X-Ray Mode 🩻</span>
+        <!-- Tooltip -->
+        <span id="xray-tooltip"
+          class="absolute -bottom-8 right-0 sm:left-1/2 sm:-translate-x-1/2 px-2 py-0.5 rounded bg-black/90 text-[10px] text-neutral-300 font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 z-50">
+          Discover virtual image (d<sub>o</sub> &lt; f) to unlock
+        </span>
+      </button>
+
+      <button id="btn-theory-modal"
+        class="px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl glass-panel text-xs font-mono font-medium text-neutral-300 hover:text-cyan-300 flex items-center gap-1.5 transition-all"
+        title="Optics Masterclass">
+        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+        <span class="hidden sm:inline">Cheat Sheet</span>
+      </button>
+
+      <button id="btn-sound" class="p-2 sm:p-2.5 rounded-xl glass-panel text-cyan-400 hover:text-white transition-all"
+        title="Toggle Sci-Fi SFX">
+        <svg id="sound-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+      </button>
+
+      <button id="btn-screenshot" class="p-2 sm:p-2.5 rounded-xl glass-panel text-neutral-300 hover:text-white transition-all hidden sm:flex"
+        title="Export PNG Snapshot">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+
+      <button id="btn-reset" class="p-2 sm:p-2.5 rounded-xl glass-panel text-neutral-300 hover:text-rose-400 transition-all"
+        title="Reset Simulation">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- EXPAND PILL TABS (Shown when panels are minimized)        -->
+  <!-- ======================================================== -->
+  <!-- Controls Expand Pill Tab -->
+  <button id="btn-expand-controls"
+    class="hidden fixed top-16 sm:top-20 left-2 sm:left-4 z-20 glass-panel px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-cyan-300 border border-cyan-500/40 shadow-xl flex items-center gap-2 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all">
+    <span>⚙️</span>
+    <span>Controls</span>
+    <span class="text-neutral-400 text-sm font-bold ml-1">+</span>
+  </button>
+
+  <!-- PiP Expand Pill Tab -->
+  <button id="btn-expand-pip"
+    class="hidden fixed bottom-3 sm:bottom-4 right-3 sm:right-4 z-20 glass-panel px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-white border border-white/20 shadow-xl flex items-center gap-2 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all">
+    <span>👁️</span>
+    <span>Eye POV</span>
+    <span class="text-cyan-400 text-sm font-bold ml-1">+</span>
+  </button>
+
+  <!-- X-Ray Info Expand Pill Tab -->
+  <button id="btn-expand-xray"
+    class="hidden fixed top-16 sm:top-20 right-2 sm:right-4 z-20 glass-panel px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-cyan-300 border border-cyan-400/50 shadow-xl flex items-center gap-2 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all">
+    <span>🩻</span>
+    <span>X-Ray Info</span>
+    <span class="text-cyan-400 text-sm font-bold ml-1">+</span>
+  </button>
+
+  <!-- Mystery Quiz Expand Pill Tab -->
+  <button id="btn-expand-quiz"
+    class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-30 glass-panel px-4 py-2 rounded-full text-xs font-mono font-bold text-cyan-300 border border-cyan-400 shadow-[0_0_20px_rgba(0,245,212,0.4)] animate-bounce-short flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
+    <span>🧠 Virtual Mystery Quiz</span>
+    <span class="text-sm font-bold text-white">+</span>
+  </button>
+
+  <!-- Theory Masterclass Expand Pill Tab -->
+  <button id="btn-expand-theory"
+    class="hidden fixed top-16 right-2 sm:right-4 z-20 glass-panel px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-amber-300 border border-amber-400/40 shadow-xl flex items-center gap-2 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all">
+    <span>📚</span>
+    <span>Cheat Sheet</span>
+    <span class="text-white text-sm font-bold ml-1">+</span>
+  </button>
+
+  <!-- ======================================================== -->
+  <!-- LEFT FLOATING CONTROLS PANEL (Glassmorphism)              -->
+  <!-- ======================================================== -->
+  <aside id="controls-panel"
+    class="fixed top-16 sm:top-20 left-2 sm:left-4 bottom-4 sm:bottom-20 w-[calc(100vw-1rem)] sm:w-80 md:w-96 max-h-[75vh] sm:max-h-none glass-panel z-10 flex flex-col p-3.5 sm:p-4 shadow-2xl overflow-hidden border border-white/10 transition-all duration-300">
+    
+    <!-- Panel Header with Title & Minimize Button -->
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-mono font-bold tracking-wider text-white flex items-center gap-1.5">
+          <span>⚙️</span> OPTICS CONTROLS
+        </span>
+      </div>
+      <button id="btn-minimize-controls"
+        class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-sm font-mono flex items-center justify-center w-7 h-7"
+        title="Minimize Controls Panel">
+        <span class="text-base font-bold leading-none">&minus;</span>
+      </button>
+    </div>
+
+    <!-- Mode Switcher Pill Tabs -->
+    <div class="flex items-center p-1 rounded-2xl bg-black/40 border border-white/5 mb-3 sm:mb-4 shrink-0">
+      <button id="tab-basic"
+        class="flex-1 py-1.5 sm:py-2 text-center text-xs font-mono font-bold tracking-wider rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(0,245,212,0.25)] transition-all">
+        BASIC MODE
+      </button>
+      <button id="tab-advanced"
+        class="flex-1 py-1.5 sm:py-2 text-center text-xs font-mono font-medium tracking-wider rounded-xl text-neutral-400 hover:text-white transition-all">
+        ADVANCED MODE
+      </button>
+    </div>
+
+    <!-- Scrollable Content Area -->
+    <div class="flex-1 overflow-y-auto pr-1 space-y-3 sm:space-y-4">
+
+      <!-- ========================================== -->
+      <!-- BASIC MODE CONTENT                         -->
+      <!-- ========================================== -->
+      <div id="panel-basic" class="space-y-3 sm:space-y-4">
+        <!-- Object Distance Slider -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-neutral-300 font-semibold flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f5d4]"></span>
+              OBJECT DISTANCE (d<sub>o</sub>)
+            </span>
+            <span id="val-obj-dist-basic" class="font-bold text-cyan-400 text-sm">16.0 cm</span>
+          </div>
+          <input id="slider-obj-dist-basic" type="range" min="2.0" max="30.0" step="0.1" value="16.0" class="w-full touch-pan-x">
+          <div class="flex justify-between text-[10px] font-mono text-neutral-500">
+            <span>2 cm (Virtual)</span>
+            <span>10 cm (Focus F)</span>
+            <span>20 cm (Center C)</span>
+            <span>30 cm</span>
+          </div>
+        </div>
+
+        <!-- Scenario Quick Presets -->
+        <div class="space-y-1.5">
+          <div
+            class="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center justify-between">
+            <span>QUICK PRESETS</span>
+            <span class="text-neutral-500">VIBE CHECK</span>
+          </div>
+          <div class="grid grid-cols-1 gap-1.5">
+            <button id="preset-beyond-c"
+              class="w-full px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-purple-500/40 text-left transition-all flex items-center justify-between group">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                <span class="text-xs font-mono text-neutral-200 group-hover:text-purple-300 font-medium">Beyond C
+                  (d<sub>o</sub> = 25 cm)</span>
+              </div>
+              <span class="text-[10px] font-mono text-neutral-400 group-hover:text-white">Real &bull; Diminished</span>
+            </button>
+
+            <button id="preset-at-c"
+              class="w-full px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-blue-500/40 text-left transition-all flex items-center justify-between group">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                <span class="text-xs font-mono text-neutral-200 group-hover:text-blue-300 font-medium">At C
+                  (d<sub>o</sub> = 20 cm)</span>
+              </div>
+              <span class="text-[10px] font-mono text-neutral-400 group-hover:text-white">Real &bull; Same Size</span>
+            </button>
+
+            <button id="preset-between-cf"
+              class="w-full px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-green-500/40 text-left transition-all flex items-center justify-between group">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-xs font-mono text-neutral-200 group-hover:text-emerald-300 font-medium">Between C & F
+                  (d<sub>o</sub> = 15 cm)</span>
+              </div>
+              <span class="text-[10px] font-mono text-neutral-400 group-hover:text-white">Real &bull; Magnified</span>
+            </button>
+
+            <button id="preset-at-f"
+              class="w-full px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-amber-500/40 text-left transition-all flex items-center justify-between group">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span class="text-xs font-mono text-neutral-200 group-hover:text-amber-300 font-medium">At Focus F
+                  (d<sub>o</sub> = 10 cm)</span>
+              </div>
+              <span class="text-[10px] font-mono text-neutral-400 group-hover:text-white">Parallel Rays (&infin;)</span>
+            </button>
+
+            <button id="preset-virtual"
+              class="w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-purple-900/30 via-pink-900/20 to-cyan-900/30 hover:from-purple-900/50 hover:to-pink-900/40 border border-purple-500/40 hover:border-pink-500/60 text-left transition-all flex items-center justify-between shadow-[0_0_15px_rgba(121,40,202,0.2)] group">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-ping"></span>
+                <span class="text-xs font-mono text-pink-200 font-bold tracking-wide">✨ Virtual Zone (d<sub>o</sub>
+                  &lt; f)</span>
+              </div>
+              <span class="text-[10px] font-mono text-pink-300 font-semibold">Holographic!</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Optics Quiz Re-Trigger Button -->
+        <button id="btn-retrigger-quiz"
+          class="w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-mono flex items-center justify-center gap-2 transition-all">
+          <span>🧠</span> Test Me: Virtual Diverging Rays Mystery
+        </button>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- ADVANCED MODE CONTENT                      -->
+      <!-- ========================================== -->
+      <div id="panel-advanced" class="space-y-3 sm:space-y-4 hidden">
+        <!-- Focal Length Input & Radius of Curvature -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-neutral-300 font-semibold">FOCAL LENGTH (f)</span>
+            <div class="flex items-center gap-1.5">
+              <input id="input-focal-dist" type="number" min="4.0" max="20.0" step="0.5" value="10.0"
+                class="w-16 text-right">
+              <span class="text-xs font-mono text-neutral-400">cm</span>
+            </div>
+          </div>
+          <input id="slider-focal-dist" type="range" min="4.0" max="20.0" step="0.5" value="10.0" class="w-full touch-pan-x">
+          <div class="flex justify-between text-[11px] font-mono text-neutral-400 pt-1 border-t border-white/5">
+            <span>Radius of Curvature (R = 2f):</span>
+            <span id="text-curvature-radius" class="text-cyan-400 font-bold">20.0 cm</span>
+          </div>
+        </div>
+
+        <!-- Object Distance Exact -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-neutral-300 font-semibold">OBJECT DISTANCE (d<sub>o</sub>)</span>
+            <div class="flex items-center gap-1.5">
+              <input id="input-obj-dist-adv" type="number" min="2.0" max="30.0" step="0.1" value="16.0"
+                class="w-16 text-right">
+              <span class="text-xs font-mono text-neutral-400">cm</span>
+            </div>
+          </div>
+          <input id="slider-obj-dist-adv" type="range" min="2.0" max="30.0" step="0.1" value="16.0" class="w-full touch-pan-x">
+        </div>
+
+        <!-- Object Height Exact -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-neutral-300 font-semibold">OBJECT HEIGHT (h<sub>o</sub>)</span>
+            <div class="flex items-center gap-1.5">
+              <input id="input-obj-height" type="number" min="1.0" max="6.0" step="0.1" value="3.5"
+                class="w-16 text-right">
+              <span class="text-xs font-mono text-neutral-400">cm</span>
+            </div>
+          </div>
+          <input id="slider-obj-height" type="range" min="1.0" max="6.0" step="0.1" value="3.5" class="w-full touch-pan-x">
+        </div>
+
+        <!-- Number of Rays Slider (Customizable Multiple Rays) -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-neutral-300 font-semibold">NUMBER OF RAYS</span>
+            <div class="flex items-center gap-1.5">
+              <span id="val-ray-count" class="text-sm font-bold text-cyan-400 font-mono">2</span>
+              <span class="text-xs font-mono text-neutral-400">rays</span>
+            </div>
+          </div>
+          <input id="slider-ray-count" type="range" min="2" max="20" step="1" value="2" class="w-full touch-pan-x">
+          <div class="flex justify-between text-[10px] font-mono text-neutral-500">
+            <span>2 (Textbook)</span>
+            <span>10</span>
+            <span>20 (Dense Beam)</span>
+          </div>
+        </div>
+
+        <!-- Ray Diagram Toggles: Strictly 2 Textbook Rays -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2.5">
+          <div class="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">PRINCIPAL RAY TOGGLES</div>
+
+          <label class="flex items-center justify-between text-xs font-mono cursor-pointer hover:text-white">
+            <span class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f5d4]"></span>
+              <span>Ray 1: Parallel &rarr; Focus (F)</span>
+            </span>
+            <input id="toggle-ray1" type="checkbox" checked class="w-4 h-4 accent-cyan-400 rounded">
+          </label>
+
+          <label class="flex items-center justify-between text-xs font-mono cursor-pointer hover:text-white">
+            <span class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_#ff007f]"></span>
+              <span>Ray 2: To Pole (P) &rarr; Equal Angle</span>
+            </span>
+            <input id="toggle-ray2" type="checkbox" checked class="w-4 h-4 accent-pink-500 rounded">
+          </label>
+
+          <div class="border-t border-white/5 my-1.5"></div>
+
+          <label class="flex items-center justify-between text-xs font-mono cursor-pointer hover:text-white">
+            <span class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 border border-dashed border-white"></span>
+              Virtual Extension Dashed Rays
+            </span>
+            <input id="toggle-virtual-rays" type="checkbox" checked class="w-4 h-4 accent-purple-400 rounded">
+          </label>
+
+          <label class="flex items-center justify-between text-xs font-mono cursor-pointer hover:text-white">
+            <span class="flex items-center gap-2 text-neutral-400">
+              <span>📐</span> Surface Normal Vectors
+            </span>
+            <input id="toggle-normals" type="checkbox" class="w-4 h-4 accent-neutral-400 rounded">
+          </label>
+
+          <label class="flex items-center justify-between text-xs font-mono cursor-pointer hover:text-white">
+            <span class="flex items-center gap-2 text-neutral-400">
+              <span>✨</span> Animated Photons
+            </span>
+            <input id="toggle-photons" type="checkbox" checked class="w-4 h-4 accent-cyan-400 rounded">
+          </label>
+        </div>
+
+        <!-- Live Math Formulas Card -->
+        <div class="p-3 sm:p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+          <div class="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-bold">LIVE OPTICS CALCULATIONS</div>
+          <div id="math-formula-di" class="text-xs"></div>
+          <div id="math-formula-m" class="text-xs border-t border-white/5 pt-2"></div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- IMAGE STATS HUD CARD (Shared by both modes) -->
+      <!-- ========================================== -->
+      <div class="p-3 sm:p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2.5 shadow-xl">
+        <div
+          class="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center justify-between">
+          <span>OPTICAL IMAGE STATUS</span>
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5">
+          <span id="badge-image-type"
+            class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40">
+            REAL
+          </span>
+          <span id="badge-orientation"
+            class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            INVERTED
+          </span>
+          <span id="badge-size"
+            class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+            MAGNIFIED
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-white/5 text-xs font-mono">
+          <div>
+            <div class="text-neutral-400 text-[10px]">IMAGE DISTANCE (d<sub>i</sub>):</div>
+            <div id="text-image-dist" class="text-white font-bold text-sm">-26.7 cm</div>
+          </div>
+          <div>
+            <div class="text-neutral-400 text-[10px]">MAGNIFICATION (m):</div>
+            <div id="text-magnification" class="text-white font-bold text-sm">-1.67x</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ======================================================== -->
+  <!-- 'POV' PICTURE-IN-PICTURE WINDOW (BOTTOM RIGHT CORNER)     -->
+  <!-- ======================================================== -->
+  <div id="pip-container"
+    class="fixed bottom-3 sm:bottom-4 right-3 sm:right-4 w-60 sm:w-80 glass-panel z-20 overflow-hidden shadow-2xl border border-white/15 flex flex-col transition-all duration-300">
+    <!-- PiP HUD Header -->
+    <div class="px-3 py-2 bg-black/50 border-b border-white/10 flex items-center justify-between">
+      <div class="flex items-center gap-1.5">
+        <span class="text-sm sm:text-base">👁️</span>
+        <div class="leading-none">
+          <span class="text-[11px] sm:text-xs font-mono font-bold tracking-wider text-white">HUMAN EYE POV</span>
+          <span class="block text-[8px] sm:text-[9px] font-mono text-neutral-400">Retinal Sensor Feed</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <!-- Status Badge -->
+        <div id="pip-status-badge"
+          class="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono tracking-wider font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> LOCKED
+        </div>
+        <!-- Minimize Button -->
+        <button id="btn-minimize-pip"
+          class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs font-mono flex items-center justify-center w-6 h-6 ml-0.5"
+          title="Minimize PiP Window">
+          <span class="text-sm font-bold leading-none">&minus;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Beam Alignment Meter -->
+    <div class="px-3 py-1 bg-black/40 border-b border-white/5 flex items-center justify-between text-[9px] sm:text-[10px] font-mono">
+      <span class="text-neutral-400">Ray Cone Alignment:</span>
+      <div class="flex items-center gap-2">
+        <div class="w-16 sm:w-24 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+          <div id="pip-alignment-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 85%;"></div>
+        </div>
+        <span id="pip-alignment-text" class="text-cyan-400 font-bold">85%</span>
+      </div>
+    </div>
+
+    <!-- PiP Canvas Viewport & Overlays -->
+    <div class="relative w-full h-36 sm:h-44 bg-black/90">
+      <canvas id="pip-canvas" class="w-full h-full block"></canvas>
+
+      <!-- Reticle Crosshair overlay -->
+      <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
+        <div class="w-12 sm:w-16 h-12 sm:h-16 border border-cyan-400 rounded-full"></div>
+        <div class="absolute w-16 sm:w-20 h-[1px] bg-cyan-400"></div>
+        <div class="absolute h-16 sm:h-20 w-[1px] bg-cyan-400"></div>
+      </div>
+
+      <!-- Warning Glitch Overlay (Shown when eye is outside reflected beam) -->
+      <div id="pip-warning-overlay"
+        class="absolute inset-0 bg-neutral-950/85 crt-glitch flex flex-col items-center justify-center p-3 text-center hidden">
+        <div
+          class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 mb-1">
+          <span class="text-xs sm:text-sm">⚠</span>
+        </div>
+        <div class="text-xs font-mono font-bold text-rose-400">NO REFLECTED RAYS</div>
+        <div id="pip-warning-message" class="text-[9px] sm:text-[10px] font-mono text-neutral-300 mt-0.5 leading-tight">
+          Eye is outside the reflection beam. No rays reach the pupil!
+        </div>
+        <button id="pip-snap-btn"
+          class="mt-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,245,212,0.3)]">
+          <span>⚡</span> Snap Eye into Beam
+        </button>
+      </div>
+    </div>
+
+    <!-- Eye Position Controls -->
+    <div class="p-2 sm:p-2.5 bg-black/50 border-t border-white/10 space-y-1">
+      <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-mono text-neutral-400">
+        <span>3D EYE COORDINATES</span>
+        <button id="pip-snap-btn-2" onclick="document.getElementById('pip-snap-btn').click()"
+          class="text-cyan-400 hover:underline">
+          Auto-Aim
+        </button>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5 text-[9px] sm:text-[10px] font-mono">
+        <div>
+          <span class="text-neutral-500">X:</span>
+          <input id="eye-slider-x" type="range" min="-8" max="8" step="0.2" value="0" class="w-full touch-pan-x">
+        </div>
+        <div>
+          <span class="text-neutral-500">Y:</span>
+          <input id="eye-slider-y" type="range" min="-6" max="6" step="0.2" value="2.5" class="w-full touch-pan-x">
+        </div>
+        <div>
+          <span class="text-neutral-500">Z:</span>
+          <input id="eye-slider-z" type="range" min="-30" max="-2" step="0.5" value="-18" class="w-full touch-pan-x">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 'X-RAY MODE 🩻' ANATOMICAL INFO CARD                      -->
+  <!-- ======================================================== -->
+  <div id="xray-info-card"
+    class="fixed top-16 sm:top-20 right-2 sm:right-4 w-[calc(100vw-1rem)] sm:w-80 md:w-96 glass-panel p-4 sm:p-5 z-20 border border-cyan-400/50 shadow-[0_0_40px_rgba(0,245,212,0.25)] space-y-3 hidden transition-all duration-300">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-lg sm:text-xl">🩻</span>
+        <div>
+          <h3 class="text-xs font-mono font-bold text-cyan-300 tracking-wider">X-RAY EYE ANATOMY</h3>
+          <p class="text-[10px] font-mono text-neutral-400">Side-Profile Lens & Retina Cutaway</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="btn-minimize-xray"
+          class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs font-mono flex items-center justify-center w-6 h-6"
+          title="Minimize Info Card">
+          <span class="text-sm font-bold leading-none">&minus;</span>
+        </button>
+        <button id="btn-close-xray"
+          class="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-mono transition-all flex items-center gap-1"
+          title="Exit X-Ray">
+          <span>✕</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- The Core Insight Box -->
+    <div class="p-3 rounded-xl bg-black/50 border border-cyan-500/30 text-xs font-mono space-y-1.5">
+      <div class="text-cyan-400 font-bold flex items-center gap-1.5 text-[11px]">
+        <span>⚡</span> KEY OPTICAL INSIGHT
+      </div>
+      <p class="text-neutral-200 text-[11px] leading-relaxed">
+        The eye's convex lens converts the <span class="text-pink-300 font-bold">diverging rays</span> of a virtual
+        image into a <span class="text-cyan-300 font-bold">REAL image</span> on the retina!
+      </p>
+    </div>
+
+    <!-- Step by Step Sequence -->
+    <div class="space-y-2 text-[11px] font-mono">
+      <div class="flex items-start gap-2 text-neutral-300">
+        <span
+          class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center text-[10px] shrink-0 mt-0.5 font-bold">1</span>
+        <div>
+          <strong class="text-white">Diverging Rays Enter:</strong>
+          <span class="text-neutral-400 block text-[10px]">The two diverging rays from the mirror strike the front surface of the eye's convex lens.</span>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-2 text-neutral-300">
+        <span
+          class="w-5 h-5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/40 flex items-center justify-center text-[10px] shrink-0 mt-0.5 font-bold">2</span>
+        <div>
+          <strong class="text-white">Convex Lens Refraction:</strong>
+          <span class="text-neutral-400 block text-[10px]">The eye's crystalline lens bends and converges both spreading rays inward.</span>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-2 text-neutral-300">
+        <span
+          class="w-5 h-5 rounded-full bg-pink-500/20 text-pink-400 border border-pink-500/40 flex items-center justify-center text-[10px] shrink-0 mt-0.5 font-bold">3</span>
+        <div>
+          <strong class="text-pink-300">Real Image on Retina:</strong>
+          <span class="text-neutral-400 block text-[10px]">The refracted rays intersect perfectly at a single point on the retina with a glowing focal dot!</span>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-2 text-neutral-300">
+        <span
+          class="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center text-[10px] shrink-0 mt-0.5 font-bold">4</span>
+        <div>
+          <strong class="text-purple-300">Brain's Reverse-Tracing:</strong>
+          <span class="text-neutral-400 block text-[10px]">Dashed lines extend straight backward from that retina point, out of the eye, and through the mirror to form the virtual image!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- CRUCIAL VIRTUAL ZONE FREEZE & QUIZ MODAL                  -->
+  <!-- ======================================================== -->
+  <div id="quiz-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xl hidden">
+    <!-- Question Card -->
+    <div id="quiz-question-card"
+      class="max-w-md w-full glass-panel p-5 sm:p-6 border border-cyan-500/40 shadow-[0_0_50px_rgba(0,245,212,0.25)] space-y-4 sm:space-y-5 text-center relative overflow-hidden">
+      <!-- Top header with badge and minimize button -->
+      <div class="flex items-center justify-between">
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(0,245,212,0.3)]">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          VIBE CHECK // OPTICS PHENOMENON
+        </div>
+        <button id="btn-minimize-quiz"
+          class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs font-mono flex items-center justify-center w-6 h-6"
+          title="Minimize Quiz">
+          <span class="text-sm font-bold leading-none">&minus;</span>
+        </button>
+      </div>
+
+      <!-- Main Question -->
+      <div class="space-y-2">
+        <h2 class="text-lg sm:text-2xl font-bold text-white tracking-tight leading-snug">
+          "The rays are diverging. <br><span class="hologram-text">Will the eye see an image here?"</span>
+        </h2>
+        <p class="text-xs font-mono text-neutral-300 leading-relaxed">
+          You just moved the neon arrow inside the focal length (<span class="text-cyan-300 font-bold">d<sub>o</sub>
+            &lt; f</span>). Reflected rays spread apart forever in real space. Can human eyes still see anything?
+        </p>
+      </div>
+
+      <!-- Interactive Yes / No Choice Buttons -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button id="quiz-btn-yes"
+          class="py-3 px-3 sm:px-4 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 hover:border-cyan-400 text-white font-mono font-bold text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(0,245,212,0.3)] hover:scale-105 active:scale-95 flex flex-col items-center gap-1">
+          <span class="text-lg sm:text-xl">✨</span>
+          <span>YES! Eye sees it</span>
+        </button>
+
+        <button id="quiz-btn-no"
+          class="py-3 px-3 sm:px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/30 text-neutral-300 font-mono font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 flex flex-col items-center gap-1">
+          <span class="text-lg sm:text-xl">❌</span>
+          <span>NO! Rays never meet</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Explanation Card (Shown after clicking Yes or No) -->
+    <div id="quiz-explanation-card"
+      class="max-w-lg w-full glass-panel p-5 sm:p-6 border border-purple-500/40 shadow-[0_0_60px_rgba(121,40,202,0.3)] space-y-4 sm:space-y-5 text-left relative overflow-hidden hidden max-h-[88vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <!-- Status Badge -->
+        <div id="quiz-result-badge"
+          class="px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider inline-flex items-center gap-1.5">
+        </div>
+        <button id="btn-minimize-quiz-exp"
+          class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs font-mono flex items-center justify-center w-6 h-6"
+          title="Minimize Quiz Explanation">
+          <span class="text-sm font-bold leading-none">&minus;</span>
+        </button>
+      </div>
+
+      <!-- Title -->
+      <h3 id="quiz-result-title" class="text-base sm:text-xl font-bold text-white tracking-tight leading-snug">
+      </h3>
+
+      <!-- Core Physics Explanation Box -->
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-black/50 border border-white/10 space-y-3 font-mono text-xs text-neutral-200">
+        <div class="flex items-start gap-2.5">
+          <span class="text-base sm:text-lg">👁️</span>
+          <div>
+            <strong class="text-cyan-300">The Eye's Converging Lens:</strong>
+            <p class="text-neutral-300 text-[11px] mt-0.5">
+              Even though the rays diverge after reflecting off the mirror, when they hit your pupil, the <span
+                class="text-white font-semibold">cornea and crystalline lens</span> of your eye refract and converge
+              those diverging rays directly onto your retina!
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2.5 border-t border-white/5 pt-2.5">
+          <span class="text-base sm:text-lg">🧠</span>
+          <div>
+            <strong class="text-purple-300">Brain Extrapolation (Virtual Image):</strong>
+            <p class="text-neutral-300 text-[11px] mt-0.5">
+              Your visual cortex assumes light travels in straight lines. It traces the diverging rays <span
+                class="text-white font-semibold">backwards behind the mirror</span> to their apparent point of
+              intersection, perceiving an upright, magnified <span class="text-pink-300 font-bold">Holographic Virtual
+                Image</span>!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons: Launch X-Ray & Reveal Virtual Rays -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+        <button id="quiz-btn-xray"
+          class="py-2.5 sm:py-3 px-4 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 font-mono font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(0,245,212,0.3)] flex items-center justify-center gap-2">
+          <span>🩻</span> Launch X-Ray Mode
+        </button>
+
+        <button id="quiz-btn-continue"
+          class="py-2.5 sm:py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-mono font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center justify-center gap-2">
+          <span>🚀</span> Reveal Hologram
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- OPTICS THEORY & CHEAT SHEET MODAL                        -->
+  <!-- ======================================================== -->
+  <div id="theory-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xl hidden">
+    <div
+      class="max-w-2xl w-full max-h-[85vh] glass-panel p-5 sm:p-6 border border-white/20 shadow-2xl flex flex-col space-y-4 overflow-hidden">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-cyan-400 text-lg">📚</span>
+          <h2 class="text-sm sm:text-base font-bold font-mono tracking-wider text-white">CONCAVE MIRROR OPTICS MASTERCLASS</h2>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="btn-minimize-theory"
+            class="p-1 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs font-mono flex items-center justify-center w-6 h-6"
+            title="Minimize Theory Modal">
+            <span class="text-sm font-bold leading-none">&minus;</span>
+          </button>
+          <button id="btn-close-theory"
+            class="p-1 rounded-lg text-neutral-400 hover:text-white transition-all text-xs font-mono">
+            ✕ CLOSE
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs font-mono text-neutral-300">
+        <!-- 1. The Mirror Formula -->
+        <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+          <h3 class="text-cyan-300 font-bold text-sm">1. The Mirror Equation</h3>
+          <p class="text-neutral-400">Relates focal length (f), object distance (d<sub>o</sub>), and image distance (d<sub>i</sub>):</p>
+          <div class="text-center py-2 text-base text-white font-bold bg-black/40 rounded-lg">
+            1/f = 1/d<sub>o</sub> + 1/d<sub>i</sub> &nbsp;&bull;&nbsp; R = 2f
+          </div>
+          <p class="text-[11px] text-neutral-400">
+            &bull; <strong>Real Image:</strong> d<sub>i</sub> &gt; 0, formed in front of mirror, inverted.<br>
+            &bull; <strong>Virtual Image:</strong> d<sub>i</sub> &lt; 0, formed behind mirror, upright.
+          </p>
+        </div>
+
+        <!-- 2. Magnification -->
+        <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+          <h3 class="text-pink-300 font-bold text-sm">2. Magnification (m)</h3>
+          <div class="text-center py-2 text-base text-white font-bold bg-black/40 rounded-lg">
+            m = -d<sub>i</sub> / d<sub>o</sub> = h<sub>i</sub> / h<sub>o</sub>
+          </div>
+          <p class="text-[11px] text-neutral-400">
+            &bull; <strong>m &lt; 0:</strong> Inverted image (Real)<br>
+            &bull; <strong>m &gt; 0:</strong> Upright image (Virtual)<br>
+            &bull; <strong>|m| &gt; 1:</strong> Magnified &bull; <strong>|m| &lt; 1:</strong> Diminished
+          </p>
+        </div>
+
+        <!-- 3. Key Ray Rules: Exactly Two Principal Rays -->
+        <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+          <h3 class="text-lime-300 font-bold text-sm">3. The 2 Principal Optical Rays</h3>
+          <ul class="space-y-2 text-[11px]">
+            <li class="flex items-start gap-2">
+              <span class="text-cyan-400 font-bold">&bull; Ray 1 (Parallel Ray):</span> Incident parallel to optical axis &rarr; reflects through principal focus F.
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-pink-400 font-bold">&bull; Ray 2 (Pole Ray):</span> Incident directly at the pole P (vertex) &rarr; reflects symmetrically below axis at the exact same angle (&theta;<sub>r</sub> = -&theta;<sub>i</sub>).
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/optics.js"></script>
+  <script src="js/components/mirror.js"></script>
+  <script src="js/components/arrow.js"></script>
+  <script src="js/components/rays.js"></script>
+  <script src="js/components/eye.js"></script>
+  <script src="js/components/pip.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>

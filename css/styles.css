@@ -1,0 +1,269 @@
+/* Gen Z Aesthetic & Glassmorphism Stylesheet for 3D Concave Mirror Simulation */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-dark: #121212;
+  --bg-card: rgba(22, 22, 28, 0.72);
+  --bg-card-hover: rgba(30, 30, 40, 0.85);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-neon-cyan: rgba(0, 245, 212, 0.35);
+  --border-neon-pink: rgba(255, 0, 127, 0.35);
+  --neon-cyan: #00f5d4;
+  --neon-pink: #ff007f;
+  --neon-purple: #7928ca;
+  --neon-yellow: #fcee0a;
+  --neon-green: #39ff14;
+  --font-main: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: #f1f5f9;
+  font-family: var(--font-main);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Background Ambient Glow & Grid */
+.bg-ambient {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 15% 20%, rgba(121, 40, 202, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(0, 245, 212, 0.14), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(255, 0, 127, 0.08), transparent 50%),
+    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.glass-panel-cyan {
+  border: 1px solid var(--border-neon-cyan);
+  box-shadow: 0 0 25px rgba(0, 245, 212, 0.12), inset 0 1px 1px rgba(0, 245, 212, 0.2);
+}
+
+.glass-panel-pink {
+  border: 1px solid var(--border-neon-pink);
+  box-shadow: 0 0 25px rgba(255, 0, 127, 0.12), inset 0 1px 1px rgba(255, 0, 127, 0.2);
+}
+
+/* Custom Scrollbar for scrollable panels */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 245, 212, 0.4);
+}
+
+/* Range Slider Styling - Sleek Neon */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+input[type="range"]:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 18px var(--neon-cyan);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+/* Number Input Styling */
+input[type="number"] {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #00f5d4;
+  font-family: var(--font-mono);
+  padding: 6px 10px;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="number"]:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.3);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 8px rgba(0, 245, 212, 0.6));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 18px rgba(0, 245, 212, 0.9));
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes holographicScan {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+.hologram-stripes {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 245, 212, 0.08) 0px,
+    rgba(0, 245, 212, 0.08) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+/* CRT Static Glitch for PiP when eye is out of beam */
+.crt-glitch {
+  background: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  animation: staticNoise 0.2s infinite;
+}
+
+@keyframes staticNoise {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  70% { transform: translate(-1px, -1px); }
+  100% { transform: translate(1px, 1px); }
+}
+
+/* Monospace font utility */
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Hologram text shimmer */
+.hologram-text {
+  background: linear-gradient(135deg, #00f5d4, #7928ca, #ff007f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: holoTextShift 4s ease infinite alternate;
+  background-size: 200% 200%;
+}
+
+@keyframes holoTextShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* 3D Canvas Container */
+#canvas-container {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  touch-action: none;
+}
+
+/* Range Slider Mobile Touch Enhancements */
+input[type="range"] {
+  touch-action: pan-x;
+}
+
+@media (max-width: 640px) {
+  input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* X-Ray Glow & Pulse */
+@keyframes xrayPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 245, 212, 0.4), inset 0 0 15px rgba(121, 40, 202, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(0, 245, 212, 0.8), inset 0 0 25px rgba(121, 40, 202, 0.6);
+  }
+}
+
+.xray-active-glow {
+  animation: xrayPulse 2s infinite ease-in-out;
+}
+
+@keyframes bounceShort {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce-short {
+  animation: bounceShort 1.5s infinite ease-in-out;
+}
+
+
